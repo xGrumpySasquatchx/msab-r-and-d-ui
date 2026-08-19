@@ -19,12 +19,24 @@ function sendPrompt(text) {
   }
 }
 
-const FONT9 = { font: { size: 9 } };
-const FONT8 = { font: { size: 8 } };
-const legendTop = { legend: { display: true, position: 'top', labels: { font: { size: 9 }, boxWidth: 10 } } };
+const FONT9 = { font: { size: 12 } };
+const FONT8 = { font: { size: 11 } };
+const legendTop = { legend: { display: true, position: 'top', labels: { font: { size: 12 }, boxWidth: 12 } } };
+
+const MAIN_TABS = [
+  { id: 'screening', label: 'Screening & functional' },
+  { id: 'structure', label: 'Structure & format' },
+  { id: 'biophysics', label: 'Biophysics & developability' },
+  { id: 'bioactivity', label: 'Biological activity' },
+  { id: 'production', label: 'Production & format' },
+  { id: 'registration', label: 'Registration & uniqueness', className: 'regtab' },
+  { id: 'compare', label: 'Comparison' },
+  { id: 'profile', label: 'Molecule profile', className: 'ptab' },
+  { id: 'config', label: 'Threshold config', className: 'ptab' },
+];
 
 export default function App() {
-  const [tab, setTab] = useState('screening');
+  const [activeTabs, setActiveTabs] = useState(() => new Set(['screening']));
   const [subTabs, setSubTabs] = useState({
     sc: 'sc-a', st: 'st-a', bp: 'bp-a', ba: 'ba-std', pr: 'pr-a', reg: 'reg-a',
   });
@@ -37,11 +49,31 @@ export default function App() {
   const [runAbFilter, setRunAbFilter] = useState('all');
   const [profileName, setProfileName] = useState('a-hTfR1_iso_326');
   const [savedLabel, setSavedLabel] = useState('Save preset');
+  const [uiScale, setUiScale] = useState(100);
   const { registerOpen, selected } = useSelection();
 
   const openProfile = (name) => {
     setProfileName(name);
-    setTab('profile');
+    setActiveTabs(new Set(['profile']));
+  };
+
+  const focusTab = (id) => setActiveTabs(new Set([id]));
+
+  const onMainTabClick = (id, e) => {
+    const additive = e.shiftKey || e.metaKey || e.ctrlKey;
+    if (!additive) {
+      focusTab(id);
+      return;
+    }
+    setActiveTabs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        if (next.size > 1) next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -61,8 +93,77 @@ export default function App() {
     block: screening.filter((d) => d.block >= 80).length,
   }), []);
 
+  const selectedTabIds = MAIN_TABS.map((t) => t.id).filter((id) => activeTabs.has(id));
+  const combined = selectedTabIds.length > 1;
+
+  const renderPanel = (id) => {
+    switch (id) {
+      case 'screening':
+        return (
+          <ScreeningPanel
+            sub={subTabs.sc}
+            onSub={(sid) => showSub('sc', sid)}
+            clusterFilterTop={clusterFilterTop}
+            tblCluster={tblCluster}
+            setTblCluster={setTblCluster}
+            tblKdFilter={tblKdFilter}
+            setTblKdFilter={setTblKdFilter}
+            stats={stats}
+            openProfile={openProfile}
+          />
+        );
+      case 'structure':
+        return (
+          <StructurePanel
+            sub={subTabs.st}
+            onSub={(sid) => showSub('st', sid)}
+            xlMode={xlMode}
+            setXlMode={setXlMode}
+          />
+        );
+      case 'biophysics':
+        return <BiophysicsPanel sub={subTabs.bp} onSub={(sid) => showSub('bp', sid)} />;
+      case 'bioactivity':
+        return (
+          <BioactivityPanel
+            sub={subTabs.ba}
+            onSub={(sid) => showSub('ba', sid)}
+            xlAssayFilter={xlAssayFilter}
+            setXlAssayFilter={setXlAssayFilter}
+          />
+        );
+      case 'production':
+        return (
+          <ProductionPanel
+            sub={subTabs.pr}
+            onSub={(sid) => showSub('pr', sid)}
+            runAbFilter={runAbFilter}
+            setRunAbFilter={setRunAbFilter}
+            openProfile={openProfile}
+          />
+        );
+      case 'registration':
+        return (
+          <RegistrationPanel
+            sub={subTabs.reg}
+            onSub={(sid) => showSub('reg', sid)}
+            layers={layers}
+            setLayers={setLayers}
+          />
+        );
+      case 'compare':
+        return <ComparePanel openProfile={openProfile} />;
+      case 'profile':
+        return <ProfilePanel name={profileName} setProfileName={setProfileName} />;
+      case 'config':
+        return <ConfigPanel savedLabel={savedLabel} setSavedLabel={setSavedLabel} />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div>
+    <div className="app-shell" style={{ '--ui-scale': uiScale / 100 }}>
       <h2 style={{
         position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)',
       }}
@@ -93,80 +194,53 @@ export default function App() {
             <option value={4}>Cluster 4</option>
             <option value={5}>Cluster 5</option>
           </select>
-          <button type="button" className="primary" onClick={() => setTab('config')}>Thresholds</button>
+          <label className="scale-ctl">
+            Scale
+            <input
+              type="range"
+              min="80"
+              max="150"
+              step="5"
+              value={uiScale}
+              onChange={(e) => setUiScale(parseInt(e.target.value, 10))}
+            />
+            <span>{uiScale}%</span>
+          </label>
+          <button type="button" className="primary" onClick={() => focusTab('config')}>Thresholds</button>
         </div>
       </div>
 
       <div className="tabrow">
-        <div className={`tab${tab === 'screening' ? ' active' : ''}`} onClick={() => setTab('screening')}>Screening &amp; functional</div>
-        <div className={`tab${tab === 'structure' ? ' active' : ''}`} onClick={() => setTab('structure')}>Structure &amp; format</div>
-        <div className={`tab${tab === 'biophysics' ? ' active' : ''}`} onClick={() => setTab('biophysics')}>Biophysics &amp; developability</div>
-        <div className={`tab${tab === 'bioactivity' ? ' active' : ''}`} onClick={() => setTab('bioactivity')}>Biological activity</div>
-        <div className={`tab${tab === 'production' ? ' active' : ''}`} onClick={() => setTab('production')}>Production &amp; format</div>
-        <div className={`tab regtab${tab === 'registration' ? ' active' : ''}`} onClick={() => setTab('registration')}>Registration &amp; uniqueness</div>
-        <div className={`tab${tab === 'compare' ? ' active' : ''}`} onClick={() => setTab('compare')}>Comparison</div>
-        <div className={`tab ptab${tab === 'profile' ? ' active' : ''}`} onClick={() => setTab('profile')}>Molecule profile</div>
-        <div className={`tab ptab${tab === 'config' ? ' active' : ''}`} onClick={() => setTab('config')}>Threshold config</div>
+        {MAIN_TABS.map((t) => (
+          <div
+            key={t.id}
+            className={`tab${t.className ? ` ${t.className}` : ''}${activeTabs.has(t.id) ? ' active' : ''}`}
+            onClick={(e) => onMainTabClick(t.id, e)}
+          >
+            {t.label}
+          </div>
+        ))}
+      </div>
+      <div className="tab-hint">
+        {combined
+          ? `Combined view: ${selectedTabIds.map((id) => MAIN_TABS.find((t) => t.id === id)?.label).join(' · ')}. Shift-click a tab to add or remove it.`
+          : 'Shift-click tabs to show their plots together. Drag the corner of any chart to resize it.'}
       </div>
 
       <SelectionBar />
 
       <div className="content">
-        {tab === 'screening' && (
-          <ScreeningPanel
-            sub={subTabs.sc}
-            onSub={(id) => showSub('sc', id)}
-            clusterFilterTop={clusterFilterTop}
-            tblCluster={tblCluster}
-            setTblCluster={setTblCluster}
-            tblKdFilter={tblKdFilter}
-            setTblKdFilter={setTblKdFilter}
-            stats={stats}
-            openProfile={openProfile}
-          />
-        )}
-        {tab === 'structure' && (
-          <StructurePanel
-            sub={subTabs.st}
-            onSub={(id) => showSub('st', id)}
-            xlMode={xlMode}
-            setXlMode={setXlMode}
-          />
-        )}
-        {tab === 'biophysics' && (
-          <BiophysicsPanel sub={subTabs.bp} onSub={(id) => showSub('bp', id)} />
-        )}
-        {tab === 'bioactivity' && (
-          <BioactivityPanel
-            sub={subTabs.ba}
-            onSub={(id) => showSub('ba', id)}
-            xlAssayFilter={xlAssayFilter}
-            setXlAssayFilter={setXlAssayFilter}
-          />
-        )}
-        {tab === 'production' && (
-          <ProductionPanel
-            sub={subTabs.pr}
-            onSub={(id) => showSub('pr', id)}
-            runAbFilter={runAbFilter}
-            setRunAbFilter={setRunAbFilter}
-            openProfile={openProfile}
-          />
-        )}
-        {tab === 'registration' && (
-          <RegistrationPanel
-            sub={subTabs.reg}
-            onSub={(id) => showSub('reg', id)}
-            layers={layers}
-            setLayers={setLayers}
-          />
-        )}
-        {tab === 'compare' && <ComparePanel openProfile={openProfile} />}
-        {tab === 'profile' && (
-          <ProfilePanel name={profileName} setProfileName={setProfileName} />
-        )}
-        {tab === 'config' && (
-          <ConfigPanel savedLabel={savedLabel} setSavedLabel={setSavedLabel} />
+        {combined ? (
+          <div className="combined-grid" data-count={selectedTabIds.length}>
+            {selectedTabIds.map((id) => (
+              <section className="combined-section" key={id}>
+                <div className="combined-section-title">{MAIN_TABS.find((t) => t.id === id)?.label}</div>
+                {renderPanel(id)}
+              </section>
+            ))}
+          </div>
+        ) : (
+          renderPanel(selectedTabIds[0])
         )}
       </div>
     </div>
@@ -287,7 +361,7 @@ function ScreeningPanel({
   }), [clusterMembers]);
 
   const clusterPieOptions = useMemo(() => ({
-    plugins: { legend: { display: true, position: 'right', labels: { font: { size: 9 }, boxWidth: 10 } } },
+    plugins: { legend: { display: true, position: 'right', labels: { font: { size: 12 }, boxWidth: 12 } } },
   }), []);
 
   const filteredTable = useMemo(() => screening.filter((d) => (!tblCluster || d.c === tblCluster)
@@ -568,9 +642,9 @@ function CrosslinkMapPanel({ xlMode, setXlMode }) {
           </div>
           {xlMode === 'desc' && (
             <div>
-              <div className="xl-row"><span className="xl-tag">Disulfide</span><span style={{ fontSize: 10, color: '#555' }}>Chain A &middot; Res 23</span><span className="xl-arrow">↔</span><span style={{ fontSize: 10, color: '#555' }}>Chain A &middot; Res 96</span><span className="badge" style={{ background: '#FFF9C4', color: '#6D5300', borderColor: '#F9C200' }}>Layer 2 (optional)</span></div>
-              <div className="xl-row"><span className="xl-tag chem">Glyco-N</span><span style={{ fontSize: 10, color: '#555' }}>Chain A &middot; Asn 317</span><span className="xl-arrow">→</span><span style={{ fontSize: 10, color: '#555' }}>N-glycan</span><span className="badge" style={{ background: '#E1F5EE', color: '#085041', borderColor: '#5DCAA5' }}>Layer 4</span></div>
-              <div className="xl-row"><span className="xl-tag desc">Lys coupling</span><span style={{ fontSize: 10, color: '#555' }}>Lys &middot; unknown site</span><span className="xl-arrow">↔</span><span style={{ fontSize: 10, color: '#555' }}>Linker payload</span><span className="badge" style={{ background: '#FAECE7', color: '#712B13', borderColor: '#F0997B' }}>Layer 5</span><span className="badge warn">Site unconfirmed</span></div>
+              <div className="xl-row"><span className="xl-tag">Disulfide</span><span style={{ fontSize: 13, color: '#555' }}>Chain A &middot; Res 23</span><span className="xl-arrow">↔</span><span style={{ fontSize: 13, color: '#555' }}>Chain A &middot; Res 96</span><span className="badge" style={{ background: '#FFF9C4', color: '#6D5300', borderColor: '#F9C200' }}>Layer 2 (optional)</span></div>
+              <div className="xl-row"><span className="xl-tag chem">Glyco-N</span><span style={{ fontSize: 13, color: '#555' }}>Chain A &middot; Asn 317</span><span className="xl-arrow">→</span><span style={{ fontSize: 13, color: '#555' }}>N-glycan</span><span className="badge" style={{ background: '#E1F5EE', color: '#085041', borderColor: '#5DCAA5' }}>Layer 4</span></div>
+              <div className="xl-row"><span className="xl-tag desc">Lys coupling</span><span style={{ fontSize: 13, color: '#555' }}>Lys &middot; unknown site</span><span className="xl-arrow">↔</span><span style={{ fontSize: 13, color: '#555' }}>Linker payload</span><span className="badge" style={{ background: '#FAECE7', color: '#712B13', borderColor: '#F0997B' }}>Layer 5</span><span className="badge warn">Site unconfirmed</span></div>
             </div>
           )}
           {xlMode === 'atom' && (
@@ -913,7 +987,7 @@ function BioactivityPanel({
 
   const cba3Options = useMemo(() => ({
     scales: {
-      x: { ticks: { font: { size: 7 }, maxRotation: 45 } },
+      x: { ticks: { font: { size: 11 }, maxRotation: 45 } },
       y: { title: { display: true, text: 'Best t½ (min)', ...FONT9 }, ticks: FONT8 },
     },
   }), []);
@@ -951,7 +1025,7 @@ function BioactivityPanel({
       x: {
         min: 0,
         max: 6,
-        ticks: { font: { size: 8 }, callback: (v) => runLabels[v] || v },
+        ticks: { font: { size: 11 }, callback: (v) => runLabels[v] || v },
         title: { display: true, text: 'Solid=human, dashed=macaque', ...FONT9 },
       },
       y: { type: 'logarithmic', title: { display: true, text: 'KD (nM)', ...FONT9 }, ticks: FONT8 },
@@ -970,7 +1044,7 @@ function BioactivityPanel({
 
   const cbaXl1Options = useMemo(() => ({
     scales: {
-      x: { ticks: { font: { size: 8 }, maxRotation: 20 } },
+      x: { ticks: { font: { size: 11 }, maxRotation: 20 } },
       y: { type: 'logarithmic', title: { display: true, text: 'KD (nM)', ...FONT9 }, ticks: FONT8 },
     },
   }), []);
@@ -1132,7 +1206,7 @@ function ProductionPanel({
   const cp2Options = useMemo(() => ({
     plugins: legendTop,
     scales: {
-      x: { ticks: { font: { size: 7 }, maxRotation: 45 } },
+      x: { ticks: { font: { size: 11 }, maxRotation: 45 } },
       y: { title: { display: true, text: 'Aggregation %', ...FONT9 }, ticks: FONT8 },
     },
   }), []);
@@ -1427,7 +1501,7 @@ function ProfilePanel({ name, setProfileName }) {
     plugins: legendTop,
     scales: {
       x: {
-        min: 0, max: 6, ticks: { font: { size: 8 }, callback: (v) => runLabels[v] || v },
+        min: 0, max: 6, ticks: { font: { size: 11 }, callback: (v) => runLabels[v] || v },
       },
       y: { type: 'logarithmic', title: { display: true, text: 'KD (nM)', ...FONT9 }, ticks: FONT8 },
       y2: {
@@ -1447,8 +1521,8 @@ function ProfilePanel({ name, setProfileName }) {
       }}
       >
         <div>
-          <div style={{ fontSize: 18, fontWeight: 600 }}>{shortNameDisplay}</div>
-          <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>{`Clone: ${cloneInfo} · ${clusterInfo} · Target: hTfR1`}</div>
+          <div style={{ fontSize: 22, fontWeight: 600 }}>{shortNameDisplay}</div>
+          <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{`Clone: ${cloneInfo} · ${clusterInfo} · Target: hTfR1`}</div>
           <select
             value={name}
             onChange={(e) => {
@@ -1466,19 +1540,19 @@ function ProfilePanel({ name, setProfileName }) {
           {r && (
             <>
               <span style={{
-                padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: r.kd < 2 ? '#C8E6C9' : r.kd < 10 ? '#FFF9C4' : '#FFCDD2', color: r.kd < 2 ? '#1B5E20' : r.kd < 10 ? '#6D5300' : '#7F0000',
+                padding: '3px 10px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: r.kd < 2 ? '#C8E6C9' : r.kd < 10 ? '#FFF9C4' : '#FFCDD2', color: r.kd < 2 ? '#1B5E20' : r.kd < 10 ? '#6D5300' : '#7F0000',
               }}
               >
                 {`KD: ${fmt(r.kd)} nM`}
               </span>
               <span style={{
-                padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: r.sec >= 90 ? '#C8E6C9' : r.sec >= 80 ? '#FFF9C4' : '#FFCDD2', color: r.sec >= 90 ? '#1B5E20' : r.sec >= 80 ? '#6D5300' : '#7F0000',
+                padding: '3px 10px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: r.sec >= 90 ? '#C8E6C9' : r.sec >= 80 ? '#FFF9C4' : '#FFCDD2', color: r.sec >= 90 ? '#1B5E20' : r.sec >= 80 ? '#6D5300' : '#7F0000',
               }}
               >
                 {`SEC: ${fmt(r.sec, 0)}%`}
               </span>
               <span style={{
-                padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: r.hl > 30 ? '#C8E6C9' : r.hl > 10 ? '#FFF9C4' : '#FFCDD2', color: r.hl > 30 ? '#1B5E20' : r.hl > 10 ? '#6D5300' : '#7F0000',
+                padding: '3px 10px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: r.hl > 30 ? '#C8E6C9' : r.hl > 10 ? '#FFF9C4' : '#FFCDD2', color: r.hl > 30 ? '#1B5E20' : r.hl > 10 ? '#6D5300' : '#7F0000',
               }}
               >
                 {`t½: ${fmt(r.hl, 1)} min`}
@@ -1599,31 +1673,31 @@ function ProfilePanel({ name, setProfileName }) {
         }}
         >
           <label style={{
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer',
           }}
           >
             <input type="checkbox" defaultChecked /> Same sequences (L1)
           </label>
           <label style={{
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer',
           }}
           >
             <input type="checkbox" /> Include disulfide variants (L2)
           </label>
           <label style={{
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer',
           }}
           >
             <input type="checkbox" defaultChecked /> Same crosslinks (L3)
           </label>
           <label style={{
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer',
           }}
           >
             <input type="checkbox" /> Same PTMs (L4)
           </label>
           <label style={{
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer',
           }}
           >
             <input type="checkbox" /> Same XL to chemicals (L5)

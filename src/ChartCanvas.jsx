@@ -92,6 +92,9 @@ function fmtNum(v) {
 function defaultTooltip() {
   return {
     enabled: true,
+    titleFont: { size: 13, weight: '600' },
+    bodyFont: { size: 12 },
+    padding: 10,
     callbacks: {
       title(items) {
         const item = items?.[0];
@@ -177,6 +180,7 @@ function mergeOptions(options, { select, clear, openProfile }) {
 export default function ChartCanvas({
   id, type, data, options, height,
 }) {
+  const wrapRef = useRef(null);
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const { selected, select, clear, openProfile } = useSelection();
@@ -201,8 +205,15 @@ export default function ChartCanvas({
     };
     canvas.addEventListener('dblclick', onDblClick);
 
+    const wrap = wrapRef.current;
+    const ro = new ResizeObserver(() => {
+      if (chartRef.current) chartRef.current.resize();
+    });
+    if (wrap) ro.observe(wrap);
+
     return () => {
       canvas.removeEventListener('dblclick', onDblClick);
+      ro.disconnect();
       if (chartRef.current) {
         chartRef.current.destroy();
         chartRef.current = null;
@@ -213,7 +224,11 @@ export default function ChartCanvas({
   }, [id, type, data, options, selectedKey, select, clear, openProfile]);
 
   return (
-    <div className="chart-wrap" style={{ height: height || '100%' }}>
+    <div
+      className="chart-wrap"
+      ref={wrapRef}
+      style={height ? { minHeight: height } : undefined}
+    >
       <canvas ref={canvasRef} id={id} role="img" aria-label={id} />
     </div>
   );
