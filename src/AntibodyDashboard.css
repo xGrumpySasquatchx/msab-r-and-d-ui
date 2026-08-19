@@ -12,6 +12,9 @@ button:hover{background:#f5f5f5}
 button.primary{background:#C8E6C9;color:#1B5E20;border-color:#66BB6A}
 .scale-ctl{display:flex;align-items:center;gap:6px;font-size:12px;color:#555}
 .scale-ctl input[type=range]{width:90px;padding:0;accent-color:#378ADD}
+.scale-btn{width:26px;height:26px;padding:0;font-size:16px;line-height:1;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.scale-btn:disabled{opacity:.4;cursor:not-allowed}
+.scale-val{min-width:42px;font-variant-numeric:tabular-nums}
 .tabrow{display:flex;background:#f5f5f3;border-bottom:1px solid #e5e5e5;overflow-x:auto}
 .tab{padding:13px 18px;font-size:14px;white-space:nowrap;cursor:pointer;border-right:1px solid #e5e5e5;color:#666;border-bottom:3px solid transparent;flex-shrink:0;user-select:none}
 .tab:hover{background:#eee}
@@ -27,8 +30,12 @@ button.primary{background:#C8E6C9;color:#1B5E20;border-color:#66BB6A}
   .combined-grid[data-count="2"]{grid-template-columns:1fr 1fr}
   .combined-grid[data-count="3"],.combined-grid[data-count="4"]{grid-template-columns:1fr 1fr}
 }
-.combined-section{min-width:0;border:1px solid #e5e5e5;border-radius:12px;padding:14px 16px;background:#fff}
-.combined-section-title{font-size:16px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eee}
+.combined-section{min-width:0;border:1px solid #e5e5e5;border-radius:12px;padding:14px 16px;background:#fff;transition:box-shadow .12s,outline-color .12s,opacity .12s}
+.combined-section.dragging{opacity:.45}
+.combined-section.drop-target{outline:2px dashed #378ADD;outline-offset:2px;box-shadow:0 0 0 4px #E6F1FB}
+.combined-section-title{font-size:16px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:8px;cursor:grab;user-select:none}
+.combined-section-title:active{cursor:grabbing}
+.drag-handle{display:inline-flex;align-items:center;justify-content:center;width:18px;color:#888;letter-spacing:-2px;font-size:14px;line-height:1}
 .panel{display:none}.panel.active{display:block}
 .subtabrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .stab{padding:7px 12px;font-size:13px;border-radius:6px;border:1px solid #ddd;cursor:pointer;color:#666;background:#fff;user-select:none}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './AntibodyDashboard.css';
 import ChartCanvas from './ChartCanvas';
 import { MoleculeRow, SelectionBar, useSelection } from './selection';
@@ -35,8 +35,11 @@ const MAIN_TABS = [
   { id: 'config', label: 'Threshold config', className: 'ptab' },
 ];
 
+const SCALE_MIN = 80;
+const SCALE_MAX = 150;
+
 export default function App() {
-  const [activeTabs, setActiveTabs] = useState(() => new Set(['screening']));
+  const [activeTabs, setActiveTabs] = useState(['screening']);
   const [subTabs, setSubTabs] = useState({
     sc: 'sc-a', st: 'st-a', bp: 'bp-a', ba: 'ba-std', pr: 'pr-a', reg: 'reg-a',
   });
@@ -50,14 +53,21 @@ export default function App() {
   const [profileName, setProfileName] = useState('a-hTfR1_iso_326');
   const [savedLabel, setSavedLabel] = useState('Save preset');
   const [uiScale, setUiScale] = useState(100);
+  const [dragOverId, setDragOverId] = useState(null);
+  const [draggingId, setDraggingId] = useState(null);
+  const dragPanelId = useRef(null);
   const { registerOpen, selected } = useSelection();
 
   const openProfile = (name) => {
     setProfileName(name);
-    setActiveTabs(new Set(['profile']));
+    setActiveTabs(['profile']);
   };
 
-  const focusTab = (id) => setActiveTabs(new Set([id]));
+  const focusTab = (id) => setActiveTabs([id]);
+
+  const nudgeScale = (delta) => {
+    setUiScale((prev) => Math.min(SCALE_MAX, Math.max(SCALE_MIN, prev + delta)));
+  };
 
   const onMainTabClick = (id, e) => {
     const additive = e.shiftKey || e.metaKey || e.ctrlKey;
@@ -66,12 +76,22 @@ export default function App() {
       return;
     }
     setActiveTabs((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        if (next.size > 1) next.delete(id);
-      } else {
-        next.add(id);
+      if (prev.includes(id)) {
+        return prev.length > 1 ? prev.filter((t) => t !== id) : prev;
       }
+      return [...prev, id];
+    });
+  };
+
+  const movePanel = (fromId, toId) => {
+    if (!fromId || !toId || fromId === toId) return;
+    setActiveTabs((prev) => {
+      const from = prev.indexOf(fromId);
+      const to = prev.indexOf(toId);
+      if (from < 0 || to < 0) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
       return next;
     });
   };
@@ -93,7 +113,7 @@ export default function App() {
     block: screening.filter((d) => d.block >= 80).length,
   }), []);
 
-  const selectedTabIds = MAIN_TABS.map((t) => t.id).filter((id) => activeTabs.has(id));
+  const selectedTabIds = activeTabs;
   const combined = selectedTabIds.length > 1;
 
   const renderPanel = (id) => {
@@ -194,18 +214,36 @@ export default function App() {
             <option value={4}>Cluster 4</option>
             <option value={5}>Cluster 5</option>
           </select>
-          <label className="scale-ctl">
-            Scale
+          <div className="scale-ctl">
+            <span>Scale</span>
+            <button
+              type="button"
+              className="scale-btn"
+              aria-label="Decrease scale"
+              disabled={uiScale <= SCALE_MIN}
+              onClick={() => nudgeScale(-1)}
+            >
+              −
+            </button>
             <input
               type="range"
-              min="80"
-              max="150"
-              step="5"
+              min={SCALE_MIN}
+              max={SCALE_MAX}
+              step="1"
               value={uiScale}
               onChange={(e) => setUiScale(parseInt(e.target.value, 10))}
             />
-            <span>{uiScale}%</span>
-          </label>
+            <button
+              type="button"
+              className="scale-btn"
+              aria-label="Increase scale"
+              disabled={uiScale >= SCALE_MAX}
+              onClick={() => nudgeScale(1)}
+            >
+              +
+            </button>
+            <span className="scale-val">{uiScale}%</span>
+          </div>
           <button type="button" className="primary" onClick={() => focusTab('config')}>Thresholds</button>
         </div>
       </div>
@@ -214,7 +252,7 @@ export default function App() {
         {MAIN_TABS.map((t) => (
           <div
             key={t.id}
-            className={`tab${t.className ? ` ${t.className}` : ''}${activeTabs.has(t.id) ? ' active' : ''}`}
+            className={`tab${t.className ? ` ${t.className}` : ''}${activeTabs.includes(t.id) ? ' active' : ''}`}
             onClick={(e) => onMainTabClick(t.id, e)}
           >
             {t.label}
@@ -223,7 +261,7 @@ export default function App() {
       </div>
       <div className="tab-hint">
         {combined
-          ? `Combined view: ${selectedTabIds.map((id) => MAIN_TABS.find((t) => t.id === id)?.label).join(' · ')}. Shift-click a tab to add or remove it.`
+          ? `Combined view: ${selectedTabIds.map((id) => MAIN_TABS.find((t) => t.id === id)?.label).join(' · ')}. Shift-click to add or remove a tab. Drag a panel title to rearrange.`
           : 'Shift-click tabs to show their plots together. Drag the corner of any chart to resize it.'}
       </div>
 
@@ -233,8 +271,43 @@ export default function App() {
         {combined ? (
           <div className="combined-grid" data-count={selectedTabIds.length}>
             {selectedTabIds.map((id) => (
-              <section className="combined-section" key={id}>
-                <div className="combined-section-title">{MAIN_TABS.find((t) => t.id === id)?.label}</div>
+              <section
+                key={id}
+                className={`combined-section${dragOverId === id && draggingId !== id ? ' drop-target' : ''}${draggingId === id ? ' dragging' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (dragOverId !== id) setDragOverId(id);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const fromId = dragPanelId.current || e.dataTransfer.getData('text/plain');
+                  movePanel(fromId, id);
+                  dragPanelId.current = null;
+                  setDraggingId(null);
+                  setDragOverId(null);
+                }}
+              >
+                <div
+                  className="combined-section-title"
+                  draggable
+                  onDragStart={(e) => {
+                    dragPanelId.current = id;
+                    setDraggingId(id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', id);
+                    const section = e.currentTarget.closest('.combined-section');
+                    if (section) e.dataTransfer.setDragImage(section, 24, 16);
+                  }}
+                  onDragEnd={() => {
+                    dragPanelId.current = null;
+                    setDraggingId(null);
+                    setDragOverId(null);
+                  }}
+                >
+                  <span className="drag-handle" aria-hidden="true" title="Drag to rearrange">⋮⋮</span>
+                  <span>{MAIN_TABS.find((t) => t.id === id)?.label}</span>
+                </div>
                 {renderPanel(id)}
               </section>
             ))}
