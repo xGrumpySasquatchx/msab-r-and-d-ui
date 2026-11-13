@@ -28,7 +28,6 @@ const MAIN_TABS = [
   { id: 'screening', label: 'Screening & functional' },
   { id: 'structure', label: 'Structure & format' },
   { id: 'biophysics', label: 'Biophysics & developability' },
-  { id: 'bioactivity', label: 'Biological activity' },
   { id: 'production', label: 'Production & format' },
   { id: 'compare', label: 'Comparison' },
   { id: 'profile', label: 'Molecule profile', className: 'ptab' },
@@ -42,13 +41,12 @@ const SCALE_MAX = 150;
 export default function App() {
   const [activeTabs, setActiveTabs] = useState(['screening']);
   const [subTabs, setSubTabs] = useState({
-    sc: 'sc-a', st: 'st-a', bp: 'bp-a', ba: 'ba-std', pr: 'pr-a', reg: 'reg-a',
+    sc: 'sc-a', st: 'st-a', bp: 'bp-a', pr: 'pr-a', reg: 'reg-a',
   });
   const [clusterFilterTop, setClusterFilterTop] = useState(0);
   const [tblCluster, setTblCluster] = useState(0);
   const [tblKdFilter, setTblKdFilter] = useState('all');
   const [xlMode, setXlMode] = useState('desc');
-  const [xlAssayFilter, setXlAssayFilter] = useState('All mechanisms');
   const [layers, setLayers] = useState({ 2: false, 3: true, 4: true, 5: true });
   const [runAbFilter, setRunAbFilter] = useState('all');
   const [profileName, setProfileName] = useState('a-hTfR1_iso_326');
@@ -144,15 +142,6 @@ export default function App() {
         );
       case 'biophysics':
         return <BiophysicsPanel sub={subTabs.bp} onSub={(sid) => showSub('bp', sid)} />;
-      case 'bioactivity':
-        return (
-          <BioactivityPanel
-            sub={subTabs.ba}
-            onSub={(sid) => showSub('ba', sid)}
-            xlAssayFilter={xlAssayFilter}
-            setXlAssayFilter={setXlAssayFilter}
-          />
-        );
       case 'production':
         return (
           <ProductionPanel
@@ -478,6 +467,7 @@ function ScreeningPanel({
               <div className="tl-row"><span className="tl g">&Delta;KD &lt;2 nM</span><span className="tl a">2–5 nM</span><span className="tl r">&gt;5 nM</span></div>
             </div>
           </div>
+          <BioactivityPanel />
         </div>
       )}
 
@@ -959,9 +949,8 @@ function BiophysicsPanel({ sub, onSub }) {
 }
 
 /* ============================== BIOACTIVITY ============================== */
-function BioactivityPanel({
-  sub, onSub, xlAssayFilter, setXlAssayFilter,
-}) {
+function BioactivityPanel() {
+  const [xlAssayFilter, setXlAssayFilter] = useState('All mechanisms');
   const leadNames = useMemo(() => leads.map((l) => l.name.replace('a-hTfR1_iso_', 'iso_')), []);
   const bestHLs = useMemo(() => leads.map((l) => {
     const b = getBestRun(l);
@@ -1173,71 +1162,57 @@ function BioactivityPanel({
 
   return (
     <div>
-      <div className="subtabrow">
-        <div className={`stab${sub === 'ba-std' ? ' active' : ''}`} onClick={() => onSub('ba-std')}>Standard readouts</div>
-        <div className={`stab${sub === 'ba-xl' ? ' active' : ''}`} onClick={() => onSub('ba-xl')}>Crosslink assay context</div>
+      <div className="g2">
+        <div className="card">
+          <div className="card-title">KD vs t½ — lead panel</div>
+          <div className="card-desc">X = best KD &middot; Y = best t½ &middot; ideal = lower-left &middot; color = t½ traffic-light</div>
+          <ChartCanvas id="cba1" type="scatter" data={cba1Data} options={cba1Options} height={240} />
+          <div className="tl-row"><span className="tl g">t½ &gt;30 min</span><span className="tl a">10–30 min</span><span className="tl r">&lt;10 min</span></div>
+        </div>
+        <div className="card">
+          <div className="card-title">% Blockade vs KD — lead panel</div>
+          <div className="card-desc">X = best KD &middot; Y = % blockade from screening &middot; color = cluster</div>
+          <ChartCanvas id="cba2" type="scatter" data={cba2Data} options={cba2Options} height={240} />
+        </div>
       </div>
-
-      {sub === 'ba-std' && (
-        <div>
-          <div className="g2">
-            <div className="card">
-              <div className="card-title">KD vs t½ — lead panel</div>
-              <div className="card-desc">X = best KD &middot; Y = best t½ &middot; ideal = lower-left &middot; color = t½ traffic-light</div>
-              <ChartCanvas id="cba1" type="scatter" data={cba1Data} options={cba1Options} height={240} />
-              <div className="tl-row"><span className="tl g">t½ &gt;30 min</span><span className="tl a">10–30 min</span><span className="tl r">&lt;10 min</span></div>
-            </div>
-            <div className="card">
-              <div className="card-title">% Blockade vs KD — lead panel</div>
-              <div className="card-desc">X = best KD &middot; Y = % blockade from screening &middot; color = cluster</div>
-              <ChartCanvas id="cba2" type="scatter" data={cba2Data} options={cba2Options} height={240} />
-            </div>
-          </div>
-          <div className="g2">
-            <div className="card">
-              <div className="card-title">Half-life by clone — best run per lead</div>
-              <ChartCanvas id="cba3" type="bar" data={cba3Data} options={cba3Options} height={220} />
-            </div>
-            <div className="card">
-              <div className="card-title">Cross-species KD trend across runs</div>
-              <ChartCanvas id="cba4" type="line" data={cba4Data} options={cba4Options} height={220} />
-            </div>
-          </div>
+      <div className="g2">
+        <div className="card">
+          <div className="card-title">Half-life by clone — best run per lead</div>
+          <ChartCanvas id="cba3" type="bar" data={cba3Data} options={cba3Options} height={220} />
         </div>
-      )}
-
-      {sub === 'ba-xl' && (
-        <div>
-          <div className="card" style={{ marginBottom: 10 }}>
-            <div className="card-title">Crosslink assay context filter <span className="badge new">new</span></div>
-            <div className="card-desc" style={{ marginBottom: 8 }}>Filter functional readouts by the crosslinking mechanism used in the assay. Reveals avidity-dependent potency shifts.</div>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {xlChips.map((chip) => (
-                <span
-                  key={chip}
-                  className={`assay-chip${xlAssayFilter === chip ? ' sel' : ''}`}
-                  onClick={() => setXlAssayFilter(chip)}
-                >
-                  {chip}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="g2">
-            <div className="card">
-              <div className="card-title">KD shift by crosslink mechanism <span className="badge new">new</span></div>
-              <div className="card-desc">Same leads, different assay crosslink conditions — avidity-driven potency differences on hTfR1.</div>
-              <ChartCanvas id="cba-xl1" type="bar" data={cbaXl1Data} options={cbaXl1Options} height={240} />
-              <div className="tl-row"><span className="tl g">KD &lt;2 nM</span><span className="tl a">2–10 nM</span><span className="tl r">&gt;10 nM</span></div>
-            </div>
-            <div className="card">
-              <div className="card-title">Monovalent vs crosslinked KD <span className="badge new">new</span></div>
-              <div className="card-desc">X = monovalent KD &middot; Y = best crosslinked KD &middot; below diagonal = avidity enhancement.</div>
-              <ChartCanvas id="cba-xl2" type="scatter" data={cbaXl2Data} options={cbaXl2Options} height={240} />
-            </div>
-          </div>
+        <div className="card">
+          <div className="card-title">Cross-species KD trend across runs</div>
+          <ChartCanvas id="cba4" type="line" data={cba4Data} options={cba4Options} height={220} />
         </div>
-      )}
+      </div>
+      <div className="card" style={{ marginBottom: 10 }}>
+        <div className="card-title">Crosslink assay context filter <span className="badge new">new</span></div>
+        <div className="card-desc" style={{ marginBottom: 8 }}>Filter functional readouts by the crosslinking mechanism used in the assay. Reveals avidity-dependent potency shifts.</div>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {xlChips.map((chip) => (
+            <span
+              key={chip}
+              className={`assay-chip${xlAssayFilter === chip ? ' sel' : ''}`}
+              onClick={() => setXlAssayFilter(chip)}
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="g2">
+        <div className="card">
+          <div className="card-title">KD shift by crosslink mechanism <span className="badge new">new</span></div>
+          <div className="card-desc">Same leads, different assay crosslink conditions — avidity-driven potency differences on hTfR1.</div>
+          <ChartCanvas id="cba-xl1" type="bar" data={cbaXl1Data} options={cbaXl1Options} height={240} />
+          <div className="tl-row"><span className="tl g">KD &lt;2 nM</span><span className="tl a">2–10 nM</span><span className="tl r">&gt;10 nM</span></div>
+        </div>
+        <div className="card">
+          <div className="card-title">Monovalent vs crosslinked KD <span className="badge new">new</span></div>
+          <div className="card-desc">X = monovalent KD &middot; Y = best crosslinked KD &middot; below diagonal = avidity enhancement.</div>
+          <ChartCanvas id="cba-xl2" type="scatter" data={cbaXl2Data} options={cbaXl2Options} height={240} />
+        </div>
+      </div>
     </div>
   );
 }
