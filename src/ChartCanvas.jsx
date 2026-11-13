@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 import { canonicalName, shortName, useSelection } from './selection';
 
+Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+Chart.defaults.color = '#595959';
+
 function idsFromElement(el, chart) {
   if (!el || !chart) return [];
   const ds = chart.data.datasets[el.datasetIndex];
@@ -66,7 +69,7 @@ function applySelectionStyle(data, selected) {
           return pointIsSelected(ctx, selected) ? Math.max(n, 3) : n;
         },
         pointBorderColor: (ctx) => (
-          pointIsSelected(ctx, selected) ? '#185FA5' : resolveStyle(basePointBorder, ctx)
+          pointIsSelected(ctx, selected) ? '#1677FF' : resolveStyle(basePointBorder, ctx)
         ),
         borderWidth: (ctx) => {
           const w = resolveStyle(baseWidth, ctx);
@@ -74,7 +77,7 @@ function applySelectionStyle(data, selected) {
           return pointIsSelected(ctx, selected) ? Math.max(n, 3) : n;
         },
         borderColor: (ctx) => (
-          pointIsSelected(ctx, selected) ? '#185FA5' : resolveStyle(baseBorder, ctx)
+          pointIsSelected(ctx, selected) ? '#1677FF' : resolveStyle(baseBorder, ctx)
         ),
       };
     }),

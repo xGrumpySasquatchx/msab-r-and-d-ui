@@ -192,9 +192,11 @@ export default function App() {
       </h2>
 
       <div className="topbar">
-        <div className="logo">Luma</div>
-        <div className="prog-info">
-          Target: hTfR1 (Transferrin Receptor 1) &nbsp;&middot;&nbsp; 50 screened &nbsp;&middot;&nbsp; 15 leads &nbsp;&middot;&nbsp; Program: TFR-001
+        <div className="topbar-lead">
+          <div className="logo">Luma</div>
+          <div className="prog-info">
+            Target: hTfR1 (Transferrin Receptor 1) &nbsp;&middot;&nbsp; 50 screened &nbsp;&middot;&nbsp; 15 leads &nbsp;&middot;&nbsp; Program: TFR-001
+          </div>
         </div>
         <div className="tl-legend">
           <span className="tl-dot" style={{ background: '#2E7D32' }} />
@@ -617,7 +619,7 @@ function StructurePanel({ sub, onSub, xlMode, setXlMode }) {
         label: 'Avg SEC%', data: [91, 87, 78], backgroundColor: [GF, AF, RF], borderColor: [G, A, R], borderWidth: 1.5, yAxisID: 'y',
       },
       {
-        label: 'Avg titer (g/L)', data: [0.82, 0.54, 0.28], backgroundColor: 'rgba(55,138,221,.2)', borderColor: '#378ADD', borderWidth: 1, yAxisID: 'y2',
+        label: 'Avg titer (g/L)', data: [0.82, 0.54, 0.28], backgroundColor: 'rgba(22,119,255,.16)', borderColor: '#1677FF', borderWidth: 1, yAxisID: 'y2',
       },
     ],
   }), []);
@@ -641,15 +643,7 @@ function StructurePanel({ sub, onSub, xlMode, setXlMode }) {
         <div className={`stab${sub === 'st-a' ? ' active' : ''}`} onClick={() => onSub('st-a')}>A — Building block &amp; component</div>
         <div className={`stab${sub === 'st-b' ? ' active' : ''}`} onClick={() => onSub('st-b')}>B — CDR / FR flags</div>
         <div className={`stab${sub === 'st-c' ? ' active' : ''}`} onClick={() => onSub('st-c')}>C — Host comparison</div>
-        <div
-          className={`stab${sub === 'st-d' ? ' active' : ''}`}
-          onClick={() => onSub('st-d')}
-          style={{
-            background: '#EAF3DE', color: '#1B5E20', borderColor: '#66BB6A', fontWeight: 600,
-          }}
-        >
-          D — Crosslink map
-        </div>
+        <div className={`stab${sub === 'st-d' ? ' active' : ''}`} onClick={() => onSub('st-d')}>D — Crosslink map</div>
       </div>
 
       {sub === 'st-a' && (
@@ -731,12 +725,12 @@ function CrosslinkMapPanel({ xlMode, setXlMode }) {
         <div className="card">
           <div className="card-title">Sequence crosslink arc map <span className="badge mod">enhanced</span></div>
           <div className="card-desc" style={{ marginBottom: 8 }}>Intrachain S-S (red dashed) and interchain XL (purple) overlaid on sequence strip.</div>
-          <svg viewBox="0 0 320 100" width="100%" style={{ display: 'block', border: '1px solid #e8e8e8', borderRadius: 6, background: '#fafafa' }}>
-            <text x="8" y="24" fontSize="8" fill="#555" fontWeight="600">Chain A (VH)</text>
-            <rect x="8" y="28" width="304" height="13" rx="3" fill="#E6F1FB" stroke="#85B7EB" strokeWidth="0.7" />
-            <rect x="55" y="28" width="11" height="13" rx="2" fill="#378ADD" /><text x="58" y="38" fontSize="7" fill="#fff" fontWeight="700">C</text>
-            <rect x="230" y="28" width="11" height="13" rx="2" fill="#378ADD" /><text x="233" y="38" fontSize="7" fill="#fff" fontWeight="700">C</text>
-            <text x="52" y="50" fontSize="6" fill="#378ADD">23</text><text x="228" y="50" fontSize="6" fill="#378ADD">96</text>
+          <svg viewBox="0 0 320 100" width="100%" style={{ display: 'block', border: '1px solid #E5E8EB', borderRadius: 8, background: '#F7F8FA' }}>
+            <text x="8" y="24" fontSize="8" fill="#595959" fontWeight="600">Chain A (VH)</text>
+            <rect x="8" y="28" width="304" height="13" rx="3" fill="#E6F4FF" stroke="#91CAFF" strokeWidth="0.7" />
+            <rect x="55" y="28" width="11" height="13" rx="2" fill="#1677FF" /><text x="58" y="38" fontSize="7" fill="#fff" fontWeight="700">C</text>
+            <rect x="230" y="28" width="11" height="13" rx="2" fill="#1677FF" /><text x="233" y="38" fontSize="7" fill="#fff" fontWeight="700">C</text>
+            <text x="52" y="50" fontSize="6" fill="#1677FF">23</text><text x="228" y="50" fontSize="6" fill="#1677FF">96</text>
             <text x="8" y="68" fontSize="8" fill="#555" fontWeight="600">Chain B (VL)</text>
             <rect x="8" y="72" width="304" height="13" rx="3" fill="#E1F5EE" stroke="#5DCAA5" strokeWidth="0.7" />
             <rect x="140" y="72" width="11" height="13" rx="2" fill="#1D9E75" /><text x="143" y="82" fontSize="7" fill="#fff" fontWeight="700">C</text>
@@ -793,7 +787,7 @@ function CrosslinkMapPanel({ xlMode, setXlMode }) {
                 <td style={{ textAlign: 'center', color: '#ccc' }}>—</td>
                 <td style={{ textAlign: 'center', color: '#ccc' }}>—</td>
                 <td style={{ textAlign: 'center', color: '#ccc' }}>—</td>
-                <td><span className="badge" style={{ background: '#E6F1FB', color: '#0C447C', borderColor: '#85B7EB' }}>L3 ring</span></td>
+                <td><span className="badge mod">L3 ring</span></td>
               </tr>
             </tbody>
           </table>
@@ -1151,15 +1145,7 @@ function BioactivityPanel({
     <div>
       <div className="subtabrow">
         <div className={`stab${sub === 'ba-std' ? ' active' : ''}`} onClick={() => onSub('ba-std')}>Standard readouts</div>
-        <div
-          className={`stab${sub === 'ba-xl' ? ' active' : ''}`}
-          onClick={() => onSub('ba-xl')}
-          style={{
-            background: '#EAF3DE', color: '#1B5E20', borderColor: '#66BB6A', fontWeight: 600,
-          }}
-        >
-          Crosslink assay context
-        </div>
+        <div className={`stab${sub === 'ba-xl' ? ' active' : ''}`} onClick={() => onSub('ba-xl')}>Crosslink assay context</div>
       </div>
 
       {sub === 'ba-std' && (
@@ -1432,7 +1418,7 @@ function RegistrationPanel({
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
               <span className="badge" style={{ background: '#C8E6C9', color: '#1B5E20', borderColor: '#66BB6A' }}>L1 sequences</span>
               <span className="badge" style={{ background: '#FFF9C4', color: '#6D5300', borderColor: '#F9C200' }}>L2 disulfide</span>
-              <span className="badge" style={{ background: '#E6F1FB', color: '#0C447C', borderColor: '#85B7EB' }}>L3 XL</span>
+              <span className="badge mod">L3 XL</span>
               <span className="badge" style={{ background: '#E1F5EE', color: '#085041', borderColor: '#5DCAA5' }}>L4 chem</span>
               <span className="badge" style={{ background: '#FAECE7', color: '#712B13', borderColor: '#F0997B' }}>L5 XL-chem</span>
             </div>
@@ -1468,7 +1454,7 @@ function RegistrationPanel({
                 <tr><td>N-glycosylation</td><td><span className="badge" style={{ background: '#f0f0f0', color: '#555', border: '1px solid #ddd' }}>OOTB</span></td><td>GlcNAc</td><td>GlcNAc:R1 – Asn:R3</td><td><span className="badge" style={{ background: '#E1F5EE', color: '#085041', borderColor: '#5DCAA5' }}>L4</span></td><td>No</td><td><span className="tl g">Yes</span></td></tr>
                 <tr><td>Peptide bond</td><td><span className="badge" style={{ background: '#f0f0f0', color: '#555', border: '1px solid #ddd' }}>OOTB</span></td><td>—</td><td>R1–R2 (sequence)</td><td><span className="badge" style={{ background: '#C8E6C9', color: '#1B5E20', borderColor: '#66BB6A' }}>L1</span></td><td>No</td><td><span className="tl g">Yes</span></td></tr>
                 <tr><td>Lys ADC coupling</td><td><span className="badge new">Admin</span></td><td>Linker</td><td>Linker:R1 – Lys:[unspec]</td><td><span className="badge" style={{ background: '#FAECE7', color: '#712B13', borderColor: '#F0997B' }}>L5</span></td><td>No</td><td><span className="tl a">Partial (site unknown)</span></td></tr>
-                <tr><td>Click chemistry ring</td><td><span className="badge new">Admin</span></td><td>Ring linker</td><td>R1–R3 (forms ring)</td><td><span className="badge" style={{ background: '#E6F1FB', color: '#0C447C', borderColor: '#85B7EB' }}>L3</span></td><td><span style={{ color: '#0C447C', fontWeight: 600 }}>Yes</span></td><td><span className="tl g">Yes</span></td></tr>
+                <tr><td>Click chemistry ring</td><td><span className="badge new">Admin</span></td><td>Ring linker</td><td>R1–R3 (forms ring)</td><td><span className="badge mod">L3</span></td><td><span style={{ color: '#0958D9', fontWeight: 600 }}>Yes</span></td><td><span className="tl g">Yes</span></td></tr>
               </tbody>
             </table>
           </div>
@@ -1564,7 +1550,7 @@ function ProfilePanel({ name, setProfileName }) {
           label: 'KD (nM)', data: kdTrend, borderColor: G, pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'y',
         },
         {
-          label: 't½ (min)', data: hlTrend, borderColor: '#378ADD', pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'y2', borderDash: [4, 2],
+          label: 't½ (min)', data: hlTrend, borderColor: '#1677FF', pointRadius: 5, tension: 0.3, fill: false, yAxisID: 'y2', borderDash: [4, 2],
         },
       ],
     };

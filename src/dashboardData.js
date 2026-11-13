@@ -1,7 +1,7 @@
 // Colors
 export const G = '#2E7D32', A = '#F9C200', R = '#C62828';
 export const GF = 'rgba(46,125,50,.2)', AF = 'rgba(249,194,0,.25)', RF = 'rgba(198,40,40,.2)';
-export const clusterColors = ['', '#378ADD', '#7F77DD', '#1D9E75', '#D85A30', '#993556'];
+export const clusterColors = ['', '#1677FF', '#7F77DD', '#1D9E75', '#D85A30', '#993556'];
 export const runLabels = ['Run A', 'Run B (TPR)', 'Run C (TPR)', 'Run D', 'Run E (TPR)', 'Run F (TPR)', 'Run G'];
 
 // Screening panel data (50 candidates across 5 clusters)
