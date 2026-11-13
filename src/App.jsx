@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './AntibodyDashboard.css';
 import ChartCanvas from './ChartCanvas';
+import { downloadProfileSlides } from './profileSlides';
 import { MoleculeRow, SelectionBar, useSelection } from './selection';
 import {
   G, A, R, GF, AF, RF, clusterColors, runLabels,
@@ -29,9 +30,9 @@ const MAIN_TABS = [
   { id: 'biophysics', label: 'Biophysics & developability' },
   { id: 'bioactivity', label: 'Biological activity' },
   { id: 'production', label: 'Production & format' },
-  { id: 'registration', label: 'Registration & uniqueness', className: 'regtab' },
   { id: 'compare', label: 'Comparison' },
   { id: 'profile', label: 'Molecule profile', className: 'ptab' },
+  { id: 'registration', label: 'Registration & uniqueness', className: 'regtab' },
   { id: 'config', label: 'Threshold config', className: 'ptab' },
 ];
 
@@ -1529,6 +1530,37 @@ function ComparePanel({ openProfile }) {
   );
 }
 
+function roundAxis(n) {
+  if (!Number.isFinite(n)) return n;
+  const abs = Math.abs(n);
+  const digits = abs >= 100 ? 1 : abs >= 10 ? 2 : abs >= 1 ? 2 : 3;
+  return Number(n.toFixed(digits));
+}
+
+function spanWindow(values, log) {
+  const nums = values.filter((v) => typeof v === 'number' && Number.isFinite(v) && (!log || v > 0));
+  if (!nums.length) return log ? { min: 0.1, max: 10 } : { min: 0, max: 10 };
+  const lo = Math.min(...nums);
+  const hi = Math.max(...nums);
+  let min;
+  let max;
+  if (log) {
+    const a = Math.log10(lo);
+    const b = Math.log10(hi);
+    const pad = Math.max(b - a, 0.12) * 0.45;
+    min = roundAxis(10 ** (a - pad));
+    max = roundAxis(10 ** (b + pad));
+    if (min <= 0) min = roundAxis(lo * 0.8);
+    if (min >= max) max = roundAxis(min * 1.5);
+  } else {
+    const pad = Math.max(hi - lo, 1) * 0.35;
+    min = roundAxis(Math.max(0, lo - pad));
+    max = roundAxis(hi + pad);
+    if (min >= max) max = roundAxis(min + 1);
+  }
+  return { min, max };
+}
+
 /* ============================== PROFILE ============================== */
 function ProfilePanel({ name, setProfileName }) {
   const { select } = useSelection();
@@ -1556,25 +1588,103 @@ function ProfilePanel({ name, setProfileName }) {
     };
   }, [lead]);
 
+  const fitted = useMemo(() => ({
+    kd: spanWindow(lead ? lead.runs.map((run) => run.kd) : [], true),
+    hl: spanWindow(lead ? lead.runs.map((run) => run.hl) : [], false),
+  }), [lead]);
+  const [axes, setAxes] = useState(fitted);
+  const [axisDraft, setAxisDraft] = useState({});
+  const [slideStatus, setSlideStatus] = useState('');
+  const profileRef = useRef(null);
+
+  useEffect(() => {
+    setAxes(fitted);
+    setAxisDraft({});
+  }, [fitted]);
+
+  const editAxis = (axis, key, raw) => {
+    setAxisDraft((prev) => ({ ...prev, [`${axis}.${key}`]: raw }));
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return;
+    if (axis === 'kd' && value <= 0) return;
+    setAxes((prev) => {
+      const nextSide = { ...prev[axis], [key]: value };
+      if (!(nextSide.min < nextSide.max)) return prev;
+      return { ...prev, [axis]: nextSide };
+    });
+  };
+
+  const axisValue = (axis, key) => {
+    const draft = axisDraft[`${axis}.${key}`];
+    return draft != null ? draft : String(axes[axis][key]);
+  };
+
   const trendOptions = useMemo(() => ({
+    clip: false,
     plugins: legendTop,
     scales: {
       x: {
-        min: 0, max: 6, ticks: { font: { size: 11 }, callback: (v) => runLabels[v] || v },
+        type: 'linear',
+        min: -0.45,
+        max: 6.45,
+        ticks: {
+          font: { size: 11 },
+          autoSkip: false,
+          maxRotation: 40,
+          callback: (value) => (Number.isInteger(value) ? (runLabels[value] || '') : ''),
+        },
+        afterBuildTicks(axis) {
+          axis.ticks = [0, 1, 2, 3, 4, 5, 6].map((value) => ({ value }));
+        },
       },
-      y: { type: 'logarithmic', title: { display: true, text: 'KD (nM)', ...FONT9 }, ticks: FONT8 },
+      y: {
+        type: 'logarithmic',
+        min: axes.kd.min,
+        max: axes.kd.max,
+        title: { display: true, text: 'KD (nM)', ...FONT9 },
+        ticks: FONT8,
+      },
       y2: {
-        position: 'right', title: { display: true, text: 't½ (min)', ...FONT9 }, ticks: FONT8, grid: { drawOnChartArea: false },
+        type: 'linear',
+        position: 'right',
+        min: axes.hl.min,
+        max: axes.hl.max,
+        title: { display: true, text: 't½ (min)', ...FONT9 },
+        ticks: FONT8,
+        grid: { drawOnChartArea: false },
       },
     },
-  }), []);
+  }), [axes]);
 
   if (!lead && !scr) {
     return <div className="card"><div className="card-title">Molecule not found</div></div>;
   }
 
+  const exportSlides = async () => {
+    setSlideStatus('Preparing…');
+    try {
+      const root = profileRef.current;
+      const title = root
+        ? [...root.querySelectorAll('.card-title')].find((el) => el.textContent.startsWith('Uniqueness'))
+        : null;
+      const uniqueness = title
+        ? [...title.parentElement.querySelectorAll('label')].map((label) => ({
+          label: label.textContent.replace(/\s+/g, ' ').trim(),
+          on: !!label.querySelector('input')?.checked,
+        }))
+        : [];
+      await downloadProfileSlides({
+        name, clone: cloneInfo, cluster: clusterInfo, screen: scr, run: r, lead, uniqueness,
+      });
+      setSlideStatus('');
+    } catch (error) {
+      console.error(error);
+      setSlideStatus('Could not export slides');
+    }
+  };
+
   return (
-    <div>
+    <div ref={profileRef}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 12,
       }}
@@ -1582,18 +1692,30 @@ function ProfilePanel({ name, setProfileName }) {
         <div>
           <div style={{ fontSize: 22, fontWeight: 600 }}>{shortNameDisplay}</div>
           <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{`Clone: ${cloneInfo} · ${clusterInfo} · Target: hTfR1`}</div>
-          <select
-            value={name}
-            onChange={(e) => {
-              setProfileName(e.target.value);
-              select([e.target.value]);
-            }}
-            style={{ marginTop: 8 }}
-          >
-            {screening.map((d) => (
-              <option key={d.name} value={d.name}>{d.name.replace('a-hTfR1_iso_', 'iso_')}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+            <select
+              value={name}
+              onChange={(e) => {
+                setProfileName(e.target.value);
+                select([e.target.value]);
+              }}
+            >
+              {screening.map((d) => (
+                <option key={d.name} value={d.name}>{d.name.replace('a-hTfR1_iso_', 'iso_')}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="primary"
+              disabled={slideStatus === 'Preparing…'}
+              onClick={exportSlides}
+            >
+              {slideStatus === 'Preparing…' ? 'Preparing slides…' : 'Export .pptx'}
+            </button>
+            {slideStatus && slideStatus !== 'Preparing…' && (
+              <span style={{ fontSize: 12, color: '#9C3A2C' }}>{slideStatus}</span>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {r && (
@@ -1646,7 +1768,76 @@ function ProfilePanel({ name, setProfileName }) {
         </div>
         <div className="card">
           <div className="card-title">KD &amp; t½ across runs</div>
-          <ChartCanvas id="c-prof-trend" type="line" data={trendData} options={trendOptions} height={200} />
+          {lead && (
+            <div className="axis-scale">
+              <label>
+                KD nM
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  aria-label="Minimum KD"
+                  min="0"
+                  step="any"
+                  value={axisValue('kd', 'min')}
+                  onChange={(e) => editAxis('kd', 'min', e.target.value)}
+                  onBlur={() => setAxisDraft((prev) => {
+                    const next = { ...prev };
+                    delete next['kd.min'];
+                    return next;
+                  })}
+                />
+                <span>to</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  aria-label="Maximum KD"
+                  min="0"
+                  step="any"
+                  value={axisValue('kd', 'max')}
+                  onChange={(e) => editAxis('kd', 'max', e.target.value)}
+                  onBlur={() => setAxisDraft((prev) => {
+                    const next = { ...prev };
+                    delete next['kd.max'];
+                    return next;
+                  })}
+                />
+              </label>
+              <label>
+                t½ min
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  aria-label="Minimum half-life"
+                  min="0"
+                  step="any"
+                  value={axisValue('hl', 'min')}
+                  onChange={(e) => editAxis('hl', 'min', e.target.value)}
+                  onBlur={() => setAxisDraft((prev) => {
+                    const next = { ...prev };
+                    delete next['hl.min'];
+                    return next;
+                  })}
+                />
+                <span>to</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  aria-label="Maximum half-life"
+                  min="0"
+                  step="any"
+                  value={axisValue('hl', 'max')}
+                  onChange={(e) => editAxis('hl', 'max', e.target.value)}
+                  onBlur={() => setAxisDraft((prev) => {
+                    const next = { ...prev };
+                    delete next['hl.max'];
+                    return next;
+                  })}
+                />
+              </label>
+              <button type="button" onClick={() => { setAxes(fitted); setAxisDraft({}); }}>Fit data</button>
+            </div>
+          )}
+          <ChartCanvas id="c-prof-trend" type="line" data={trendData} options={trendOptions} height={260} />
         </div>
       </div>
 

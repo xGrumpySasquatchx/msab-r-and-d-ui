@@ -82,7 +82,34 @@ button.primary:hover{background:var(--accent-hover); border-color:var(--accent-h
   background:var(--card); border:1px solid var(--rule); border-radius:12px; padding:14px 16px; margin-bottom:12px; min-width:0;
   box-shadow:0 1px 2px rgba(20,24,32,.04);
 }
+.card:has(.chart-wrap){position:relative}
+.card:has(.chart-wrap) > .card-title{padding-right:92px}
 .card-title{font-size:15px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.axis-scale{display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin:0 0 8px; padding-right:88px; font-size:12px; color:var(--ink-2)}
+.axis-scale label{display:inline-flex; align-items:center; gap:4px; font-weight:600}
+.axis-scale input[type=number]{width:72px; padding:3px 6px; font-size:12px}
+.axis-scale span{font-weight:500; color:var(--ink-3)}
+.figure-export{position:absolute; top:11px; right:12px; z-index:4}
+.figure-export-btn{
+  display:inline-flex; align-items:center; gap:6px; padding:3px 8px; font-size:12px; font-weight:600;
+  color:var(--ink-2); background:var(--card); border:1px solid var(--rule); border-radius:8px;
+}
+.figure-export-btn:hover{background:var(--tool); color:var(--ink)}
+.figure-export-btn[aria-expanded="true"]{border-color:var(--accent); color:var(--accent)}
+.figure-export-caret{
+  width:0; height:0; border-left:3.5px solid transparent; border-right:3.5px solid transparent;
+  border-top:4px solid currentColor;
+}
+.figure-export-menu{
+  position:absolute; top:calc(100% + 4px); right:0; min-width:96px; margin:0; padding:4px; list-style:none;
+  background:var(--card); border:1px solid var(--rule); border-radius:8px;
+  box-shadow:0 6px 16px rgba(20,24,32,.12);
+}
+.figure-export-menu button{
+  display:block; width:100%; text-align:left; border:0; background:transparent; border-radius:6px;
+  padding:6px 8px; font-size:12px; font-weight:600; color:var(--ink);
+}
+.figure-export-menu button:hover{background:var(--accent-bg); color:var(--accent-hover)}
 .card-desc{font-size:13px; color:var(--ink-2); line-height:1.5; margin-bottom:10px}
 .g2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
 .g3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
+import FigureExport from './FigureExport';
 import { canonicalName, shortName, useSelection } from './selection';
 
 Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
@@ -233,6 +234,7 @@ export default function ChartCanvas({
       style={height ? { minHeight: height } : undefined}
     >
       <canvas ref={canvasRef} id={id} role="img" aria-label={id} />
+      <FigureExport anchorRef={wrapRef} canvasRef={canvasRef} />
     </div>
   );
 }
