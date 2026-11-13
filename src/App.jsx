@@ -1067,7 +1067,8 @@ function BioactivityPanel({
         label: l.name.replace('a-hTfR1_iso_', 'iso_'),
         data: l.runs.map((r, ri) => (r.kd != null ? { x: ri, y: r.kd, name: l.name } : null)).filter(Boolean),
         borderColor: lc,
-        pointRadius: 2,
+        pointRadius: 3.5,
+        pointHoverRadius: 6,
         tension: 0.3,
         fill: false,
       };
@@ -1078,7 +1079,8 @@ function BioactivityPanel({
         data: l.runs.map((r, ri) => (r.mac != null ? { x: ri, y: r.mac, name: l.name } : null)).filter(Boolean),
         borderColor: lc,
         borderDash: [3, 2],
-        pointRadius: 2,
+        pointRadius: 3.5,
+        pointHoverRadius: 6,
         tension: 0.3,
         fill: false,
         label: null,
@@ -1087,18 +1089,45 @@ function BioactivityPanel({
     return { datasets: xsDs.concat(xsMac) };
   }, []);
 
-  const cba4Options = useMemo(() => ({
-    plugins: { legend: { display: false } },
-    scales: {
-      x: {
-        min: 0,
-        max: 6,
-        ticks: { font: { size: 11 }, callback: (v) => runLabels[v] || v },
-        title: { display: true, text: 'Solid=human, dashed=macaque', ...FONT9 },
+  const cba4Options = useMemo(() => {
+    const values = leads.flatMap((lead) => lead.runs.flatMap((run) => [run.kd, run.mac]))
+      .filter((value) => typeof value === 'number' && value > 0);
+    const lo = Math.min(...values);
+    const hi = Math.max(...values);
+    const low = Math.log10(lo);
+    const high = Math.log10(hi);
+    const pad = Math.max(high - low, 0.25) * 0.12;
+    const yMin = roundAxis(10 ** (low - pad));
+    const yMax = roundAxis(10 ** (high + pad));
+    return {
+      clip: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          type: 'linear',
+          min: -0.45,
+          max: 6.45,
+          title: { display: true, text: 'Solid = human, dashed = macaque', ...FONT9 },
+          ticks: {
+            font: { size: 11 },
+            autoSkip: false,
+            maxRotation: 40,
+            callback: (value) => (Number.isInteger(value) ? (runLabels[value] || '') : ''),
+          },
+          afterBuildTicks(axis) {
+            axis.ticks = [0, 1, 2, 3, 4, 5, 6].map((value) => ({ value }));
+          },
+        },
+        y: {
+          type: 'logarithmic',
+          min: yMin,
+          max: yMax > yMin ? yMax : roundAxis(yMin * 2),
+          title: { display: true, text: 'KD (nM)', ...FONT9 },
+          ticks: FONT8,
+        },
       },
-      y: { type: 'logarithmic', title: { display: true, text: 'KD (nM)', ...FONT9 }, ticks: FONT8 },
-    },
-  }), []);
+    };
+  }, []);
 
   const cbaXl1Data = useMemo(() => ({
     labels: ['Monovalent', 'Bivalent (Ab)', '2° Ab amplified', 'Chemical XL', 'Click chemistry'],
